@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: finspring-pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: finspring
+    ports:
+      # Host 5433 -> container 5432, so the native PostgreSQL 17 on 5432 is untouched.
+      - "5433:5432"
+    volumes:
+      - finspring_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d finspring"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  finspring_pgdata:
