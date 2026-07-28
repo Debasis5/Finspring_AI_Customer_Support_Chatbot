@@ -1,0 +1,55 @@
+# Product registry — per-client configuration.
+#
+# This file is the single source of product truth for the whole graph. No product
+# name is hardcoded in any node or prompt (invariant I-8):
+#   - classify      builds its label set from the keys below
+#   - retrieve_docs resolves `doc_collection`
+#   - retrieve_db   filters `sql_templates` and enforces `db_tables` as the table allowlist
+#   - decline       interpolates `display_name` into the off_topic template
+#
+# Keys MUST match the folder names under data/docs/<product_id>/ — ingestion walks
+# the registry to find each product's documentation.
+#
+# Onboarding a new client = swapping this file + sql_templates.yaml + the doc corpus.
+
+digital_fd:
+  display_name: "Digital Fixed Deposits"
+  doc_collection: "fd_docs"
+  db_tables:
+    - fd_holdings
+    - fd_transactions
+  sql_templates:
+    - fd_holdings
+    - fd_transactions_by_date
+    - fd_maturity
+
+digital_gold:
+  display_name: "Digital Gold"
+  doc_collection: "gold_docs"
+  db_tables:
+    - gold_holdings
+    - gold_transactions
+  sql_templates:
+    - gold_holdings
+    - gold_transactions_by_date
+
+bonds:
+  display_name: "Bonds"
+  doc_collection: "bond_docs"
+  db_tables:
+    - bond_holdings
+    - bond_transactions
+  sql_templates:
+    - bond_holdings
+    - bond_transactions_by_date
+    - bond_maturity
+
+mutual_funds:
+  display_name: "Mutual Funds"
+  doc_collection: "mf_docs"
+  db_tables:
+    - mf_holdings
+    - mf_transactions
+  sql_templates:
+    - mf_holdings
+    - mf_transactions_by_date
