@@ -11,3 +11,24 @@ wheels/
 
 # Environment Files
 .env
+.env.*
+!.env.example
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Product documentation (client material; re-ingested via the offline job)
+data/docs/**
+!data/docs/**/
+!data/docs/**/.gitkeep
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
