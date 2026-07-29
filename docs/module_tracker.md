@@ -17,15 +17,23 @@ Scope rule: v1 only. Anything in the reference doc's §7 (migration path) is out
 
 | # | Module / File | Deliverable | Notebook check | Status | Owner | Notes |
 |---|---|---|---|---|---|---|
-| 1.1 | `app/config/products.yaml` | Registry config for all 4 products (display_name, doc_collection, db_tables, sql_templates) | Stage 1 · "Registry loads and validates" | ⬜ | | |
-| 1.2 | `app/core/registry.py` | Loads/validates products.yaml → ProductConfig objects; `get()`, `product_ids()` | Stage 1 · "Registry loads and validates" | ⬜ | | |
-| 1.3 | `app/config/settings.py` | Env, model names, MAX_RETRIES, top-k | Stage 0 setup cells (env asserts) | ⬜ | | |
+| 1.1 | `app/config/products.yaml` | Registry config for all 4 products (display_name, doc_collection, db_tables, sql_templates) | Stage 1 · "Registry loads and validates" | ✅ | | 4 products keyed to `data/docs/` folder names. Tables follow `<prefix>_holdings`/`_transactions` (CLAUDE.md §4's 9-table count), not the reference doc's illustrative `fd_accounts`. `customers` deliberately excluded — it's cross-product, so it belongs in the executor's global allowlist, not one product's. Template names are Stage-3 placeholders; 3.1 must define exactly these. |
+| 1.2 | `app/core/registry.py` | Loads/validates products.yaml → ProductConfig objects; `get()`, `product_ids()` | Stage 1 · "Registry loads and validates" | ✅ | | Verified by direct run (notebook check pending 1.4). Adds `display_names()` (5.2 decline), `templates_for()` (3.4), `all_db_tables()` (3.3 allowlist), `is_valid_product()` (2.4). `extra="forbid"` so a typo'd key fails loudly; cross-product uniqueness enforced on `doc_collection`/`sql_templates`; `get()` raises on unknown IDs so invented labels can't resolve. 13 failure modes tested → all `RegistryError`. |
+| 1.3 | `app/config/settings.py` | Env, model names, MAX_RETRIES, top-k | Stage 0 setup cells (env asserts) | ✅ | | Verified by direct run — **`v1_module_tests.ipynb` does not exist yet**; re-confirm via its Stage 0 cells when created. Resolved `PGVECTOR_CONN` vs `DATABASE_URL` → `DATABASE_URL` (fixed cell 2 of `ingestion_experiments.ipynb`, which read a var defined nowhere). Models: `gpt-4o-mini`/`gpt-4o`, named here only (I-9). Frozen from notebook: chunk 1000/150, `text-embedding-3-small`. `OPENAI_API_KEY` needs `min_length=1` (empty string satisfied a bare `str`); singleton made lazy so the module imports without a populated `.env`. 7 validators tested. |
 | 1.4 | `app/retrieval/ingestion.py` | **Separate offline job**: LangChain loaders → RecursiveCharacterTextSplitter → OpenAIEmbeddings → PGVector, one collection per product; chunk-metadata contract on every chunk: `product`, `source`, `doc_version` (from 'Last updated' header), `ingested_at`, `content_hash` | `ingestion_experiments.ipynb` (full run: load → chunk → ingest → metadata-contract + scoping + idempotency checks), then `v1_module_tests.ipynb` Stage 1 "Run ingestion" | ⬜ | | |
 | 1.5 | `app/retrieval/retriever.py` | Collection-scoped top-k vector search | Stage 1 · retrieval smoke + scoping check (1.5b) | ⬜ | | |
 | 1.6 | Plain RAG chain (throwaway/dev script) | Retrieval-quality smoke test over real product docs | Stage 1 · plain RAG + sentinel (1.6b) | ⬜ | | |
 | 1.7 | `tests/unit/` — registry + retriever tests | Config validation, collection scoping | pytest (`tests/unit`) | ⬜ | | |
 
 **Stage 1 demo:** ask doc questions per product, inspect retrieved chunks.
+
+**Environment (prerequisite for 1.4, not a tracker row):** dependencies pinned in
+`pyproject.toml` + `uv.lock` (184 pkgs, `uv sync` reproduces); pytest configured with an
+`integration` marker for tests needing live Postgres/OpenAI (`-m 'not integration'` to skip);
+ruff configured (line-length 100, py313). pgvector container healthy on host port 5433.
+`pypdf` was missing — `PyPDFLoader` imports without it but fails at load time; added, since
+current KB docs are all `.docx` and it would only have surfaced on a client's first PDF.
+`OPENAI_API_KEY` is set — 1.4 is unblocked.
 
 ---
 
