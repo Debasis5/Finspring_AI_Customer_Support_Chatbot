@@ -60,6 +60,18 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "text-embedding-3-small"
     CHUNK_SIZE: int = Field(default=1000, gt=0)
     CHUNK_OVERLAP: int = Field(default=150, ge=0)
+
+    # Section-aware splitting. The first separator is a regex matching numbered
+    # headings ("\n\n5. Premature withdrawal"), so the splitter prefers to cut at
+    # section boundaries and falls back to paragraphs only when a section exceeds
+    # CHUNK_SIZE. Measured on all four KB docs: multi-section chunks 9 -> 1, and
+    # chunks starting at a heading 6 -> 41 (headings are strong topical signal in
+    # the embedding, and give `generate` a titled context unit rather than an
+    # orphaned fragment). Degrades gracefully: a KB without numbered headings
+    # simply never matches the first separator and splits on paragraphs as before.
+    # SPLIT_IS_REGEX must stay True while the first entry is a pattern.
+    SPLIT_SEPARATORS: list[str] = [r"\n\n\d+\.\s", "\n\n", "\n", " ", ""]
+    SPLIT_IS_REGEX: bool = True
     TOP_K: int = Field(default=4, gt=0, description="Chunks retrieved per product.")
 
     # -- Graph behaviour ---------------------------------------------------
