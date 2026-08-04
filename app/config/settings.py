@@ -5,7 +5,7 @@ Single source of truth for everything tunable. Two rules:
 * **Model names live here only** (invariant I-9). ``services/llm.py`` reads
   ``CHEAP_MODEL`` / ``STRONG_MODEL`` from this module and nothing else names a model.
 * **Ingestion parameters are frozen here**, decided in
-  ``notebooks/ingestion_experiments.ipynb``. Changing ``CHUNK_SIZE``,
+  ``notebooks/experiments/1_4_ingestion.ipynb``. Changing ``CHUNK_SIZE``,
   ``CHUNK_OVERLAP``, or ``EMBEDDING_MODEL`` invalidates the existing vector store —
   re-run ingestion afterwards.
 """
@@ -56,7 +56,7 @@ class Settings(BaseSettings):
     GENERATE_TEMPERATURE: float = 0.0
     VERIFY_TEMPERATURE: float = 0.0
 
-    # -- Ingestion / retrieval (frozen in ingestion_experiments.ipynb) ------
+    # -- Ingestion / retrieval (frozen in experiments/1_4_ingestion.ipynb) ------
     EMBEDDING_MODEL: str = "text-embedding-3-small"
     CHUNK_SIZE: int = Field(default=1000, gt=0)
     CHUNK_OVERLAP: int = Field(default=150, ge=0)

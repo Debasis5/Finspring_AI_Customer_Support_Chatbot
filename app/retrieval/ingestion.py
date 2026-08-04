@@ -27,7 +27,7 @@ Chunk-metadata contract — eight fields in two groups:
     ``embedding_model``, ``chunk_size``, ``chunk_overlap``. Consumed by ``retriever.py``'s
     startup drift guard.
 
-Decisions frozen in ``notebooks/ingestion_experiments.ipynb``; see that notebook for the
+Decisions frozen in ``notebooks/experiments/1_4_ingestion.ipynb``; see that notebook for the
 measurements behind the chunking parameters.
 """
 

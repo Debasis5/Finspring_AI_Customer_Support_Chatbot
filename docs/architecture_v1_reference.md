@@ -375,8 +375,11 @@ ui/
 notebooks/
   v1_module_tests.ipynb      # stage-by-stage interactive test notebook (mirrors the
                              #   module tracker; run before marking a module Done)
-  ingestion_experiments.ipynb# module 1.4 experimentation (LangChain loaders, chunking,
-                             #   embeddings, PGVector); port frozen choices to ingestion.py
+  experiments/               # one scratch notebook per module (<stage>_<module>_<slug>);
+    1_4_ingestion.ipynb      #   prototype here FIRST, then port to app/. See CLAUDE.md §5.
+    ...                      #   1_4_ingestion.ipynb = module 1.4 experimentation (LangChain
+                             #   loaders, chunking, embeddings, PGVector); frozen choices
+                             #   ported to app/retrieval/ingestion.py
 data/
   docs/<product_id>/         # raw product documentation, one folder per registry ID
 tests/

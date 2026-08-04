@@ -192,10 +192,19 @@ notebooks/
   v1_module_tests.ipynb      # stage-by-stage interactive tests; one section per
                              #   tracker stage — run a module's cells before marking
                              #   it Done in docs/module_tracker.md
-  ingestion_experiments.ipynb# module 1.4 experimentation: LangChain loaders +
-                             #   RecursiveCharacterTextSplitter + OpenAIEmbeddings +
-                             #   PGVector; settle chunking/embedding choices here,
-                             #   then port into app/retrieval/ingestion.py
+  experiments/               # one scratch notebook per module, named <stage>_<module>_
+    1_4_ingestion.ipynb      #   <slug>.ipynb. Build the module's logic inline here
+    1_5_retriever.ipynb      #   FIRST — real data, real API calls, inspect every
+    2_4_classify.ipynb       #   intermediate — then port the settled version into
+    ...                      #   app/. See §5 "Per-module workflow". Scratch by
+                             #   design: may be messy, is NOT a regression suite,
+                             #   and is superseded by v1_module_tests.ipynb once
+                             #   the module is ported.
+                             #   1_4_ingestion.ipynb is the worked example: LangChain
+                             #   loaders + RecursiveCharacterTextSplitter +
+                             #   OpenAIEmbeddings + PGVector; chunking/embedding
+                             #   choices settled there, then ported into
+                             #   app/retrieval/ingestion.py
 data/
   docs/<product_id>/         # raw product documentation, one folder per registry ID
 tests/
@@ -242,19 +251,45 @@ fd_transactions_by_date:
 
 ## 5. Build order (6 stages, each independently demo-able)
 
-1. **Registry + doc ingestion + plain RAG chain** — prove retrieval quality before any graph work. Ingestion (`ingestion.py`) is a **separate offline job**, not part of the request graph: experiment in `notebooks/ingestion_experiments.ipynb` (loaders, chunk size/overlap, embedding model), freeze choices into `settings.py`, then port into `app/retrieval/ingestion.py`. Re-run whenever product docs change.
+1. **Registry + doc ingestion + plain RAG chain** — prove retrieval quality before any graph work. Ingestion (`ingestion.py`) is a **separate offline job**, not part of the request graph: experiment in `notebooks/experiments/1_4_ingestion.ipynb` (loaders, chunk size/overlap, embedding model), freeze choices into `settings.py`, then port into `app/retrieval/ingestion.py`. Re-run whenever product docs change.
 2. **Graph skeleton:** classify → retrieve_docs → generate → verify → respond.
 3. **DB templates + executor** (with security tests) — account queries.
 4. **Interrupt-based ticket flow** + PostgresSaver checkpointing.
 5. **Decline paths + advice-drift check + respond_sanitized.**
 6. **Streamlit UI + LangSmith tracing.**
 
-**Per-module workflow:** implement the module in `app/` → run its cells in
-`notebooks/v1_module_tests.ipynb` (the tracker's "Notebook check" column maps each module
-to its cells) → cells green → mark the row Done in `docs/module_tracker.md` → next module.
-A stage is complete only when its notebook section passes end-to-end and its demo criterion
-is met. Notebook cells import from `app/`, so they fail with ImportError until the module
-exists — red → implement → green → next.
+**Per-module workflow — notebook first, always.** Every module is prototyped interactively
+before it becomes a `.py` file. This is deliberate: the point is to understand the code by
+running it against real data before committing it to `app/`, not to write it and then go
+back to check it. Four steps, in order:
+
+1. **Experiment** — `notebooks/experiments/<stage>_<module>_<slug>.ipynb` (e.g.
+   `1_5_retriever.ipynb`). Build the module's logic inline in cells, against the real
+   pgvector store / real OpenAI calls / real product docs. Inspect intermediates, try
+   alternatives side by side, and settle any open parameter choices here. Do **not**
+   create the `app/` module yet.
+2. **Port** — move the settled implementation into `app/`, unchanged in behavior. Pipeline
+   constants go to `settings.py`, not the module (§6). The notebook keeps the exploration;
+   the `.py` file keeps only the frozen result.
+3. **Verify** — add the module's clean check cells to `notebooks/v1_module_tests.ipynb`
+   (the tracker's "Notebook check" column names them). These import from `app/` and are
+   re-runnable end-to-end — they are the durable regression check, not the scratch work.
+4. **Record** — mark the row Done in `docs/module_tracker.md`, noting what the experiment
+   settled and why. Then next module.
+
+The two notebooks have distinct, non-overlapping jobs: `experiments/*` is scratch — messy
+is fine, it may go stale after porting, and nothing depends on it re-running.
+`v1_module_tests.ipynb` is the clean stage-by-stage regression suite and must always run
+green top to bottom.
+
+**When step 1 is genuinely a formality** — the module has no open choices and no unfamiliar
+API — still create the experiment notebook, but keep it short; a few cells proving the
+happy path against real data is enough. The rule is notebook-first, not
+notebook-exhaustive. Never skip straight to `app/`.
+
+A stage is complete only when its `v1_module_tests.ipynb` section passes end-to-end and its
+demo criterion is met. Those cells import from `app/`, so they fail with ImportError until
+the module is ported — red → port → green → next.
 
 Track progress in `docs/module_tracker.md`.
 
