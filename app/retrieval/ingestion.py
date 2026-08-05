@@ -79,11 +79,6 @@ LOCK_FILE_PREFIX = "~$"
 _LAST_UPDATED_RE = re.compile(r"Last updated:\**\s*([A-Za-z]+\s+\d{4})")
 UNKNOWN_VERSION = "unknown"
 
-# Log rotation. A few full runs at DEBUG fit comfortably in 1 MB, so the retained set
-# covers recent history without ever needing to be pruned by hand.
-LOG_MAX_BYTES = 1_000_000
-LOG_BACKUP_COUNT = 3
-
 
 class IngestionError(RuntimeError):
     """Raised when the job cannot produce a usable store.
@@ -350,8 +345,9 @@ def configure_logging(*, verbose: bool = False, log_to_file: bool = True) -> Non
     a handler the ``no 'Last updated:' header`` and ``no documents found`` warnings are
     swallowed silently.
 
-    The file handler rotates at ``LOG_MAX_BYTES`` and keeps ``LOG_BACKUP_COUNT`` old
-    files, so an unattended job cannot grow the log without bound. It records timestamps
+    The file handler rotates at ``settings.LOG_MAX_BYTES`` and keeps
+    ``settings.LOG_BACKUP_COUNT`` old files, so an unattended job cannot grow the log
+    without bound (both are documented there). It records timestamps
     and logger names that the console format omits: a log read after the fact needs to say
     *when*, and a run re-read weeks later needs to say which module spoke.
 
@@ -379,8 +375,8 @@ def configure_logging(*, verbose: bool = False, log_to_file: bool = True) -> Non
         settings.LOG_DIR.mkdir(parents=True, exist_ok=True)
         file_handler = RotatingFileHandler(
             settings.LOG_FILE,
-            maxBytes=LOG_MAX_BYTES,
-            backupCount=LOG_BACKUP_COUNT,
+            maxBytes=settings.LOG_MAX_BYTES,
+            backupCount=settings.LOG_BACKUP_COUNT,
             encoding="utf-8",
         )
     except OSError as exc:

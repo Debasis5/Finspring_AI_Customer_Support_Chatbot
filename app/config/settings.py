@@ -96,13 +96,37 @@ class Settings(BaseSettings):
     DOCS_ROOT: Path = REPO_ROOT / "data" / "docs"
     PRODUCTS_CONFIG: Path = REPO_ROOT / "app" / "config" / "products.yaml"
     SQL_TEMPLATES_CONFIG: Path = REPO_ROOT / "app" / "config" / "sql_templates.yaml"
-    LOG_DIR: Path = REPO_ROOT / "logs"
 
     # -- Observability (Stage 6; optional) ---------------------------------
     LANGSMITH_TRACING: bool = False
     LANGSMITH_API_KEY: str | None = None
     LANGSMITH_PROJECT: str = "finspring-chatbot-v1"
+
+    # Console and file both honour this. "DEBUG" adds LangChain/httpx internals —
+    # every embedding request — which is what you want when a run misbehaves and
+    # noise otherwise.
     LOG_LEVEL: str = "INFO"
+
+    # Where the ingestion job's rotating log lives (git-ignored). The file itself is
+    # LOG_FILE below.
+    LOG_DIR: Path = REPO_ROOT / "logs"
+
+    # Log rotation, applied to LOG_FILE. Runs *append*, so without a cap an unattended
+    # job would grow the file until it filled the disk. At LOG_MAX_BYTES the handler
+    # renames ingestion.log -> .log.1 -> .log.2 ... and starts a fresh one, deleting
+    # whatever falls off the end; LOG_BACKUP_COUNT old files are kept, so total on-disk
+    # size stays under MAX_BYTES x (BACKUP_COUNT + 1) — here ~4 MB.
+    #
+    # A full four-product run writes roughly 700 bytes at INFO, so ~1,400 runs fit
+    # before the first rotation. Raise LOG_BACKUP_COUNT if this ever moves to cron:
+    # unattended runs are the ones you dig through logs for weeks later. Set
+    # LOG_MAX_BYTES to 0 to disable rotation entirely and append forever.
+    LOG_MAX_BYTES: int = Field(
+        default=1_000_000, ge=0, description="Rotate the log at this size. 0 disables rotation."
+    )
+    LOG_BACKUP_COUNT: int = Field(
+        default=3, ge=0, description="How many rotated log files to keep."
+    )
 
     # -- Validation --------------------------------------------------------
 
