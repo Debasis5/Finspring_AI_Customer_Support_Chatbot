@@ -27,6 +27,9 @@ data/docs/**
 !data/docs/**/
 !data/docs/**/.gitkeep
 
+# Job logs (rotating; written by the ingestion job)
+logs/
+
 # Editors / OS
 .vscode/
 .idea/

@@ -96,6 +96,7 @@ class Settings(BaseSettings):
     DOCS_ROOT: Path = REPO_ROOT / "data" / "docs"
     PRODUCTS_CONFIG: Path = REPO_ROOT / "app" / "config" / "products.yaml"
     SQL_TEMPLATES_CONFIG: Path = REPO_ROOT / "app" / "config" / "sql_templates.yaml"
+    LOG_DIR: Path = REPO_ROOT / "logs"
 
     # -- Observability (Stage 6; optional) ---------------------------------
     LANGSMITH_TRACING: bool = False
@@ -129,6 +130,15 @@ class Settings(BaseSettings):
         return self
 
     # -- Derived -----------------------------------------------------------
+
+    @property
+    def LOG_FILE(self) -> Path:
+        """Rotating log written by the ingestion job (see ``ingestion.configure_logging``).
+
+        Derived rather than configured so the directory and filename cannot drift apart;
+        point ``LOG_DIR`` elsewhere to relocate it.
+        """
+        return self.LOG_DIR / "ingestion.log"
 
     @property
     def executor_url(self) -> str:

@@ -6,6 +6,11 @@
     python -m app.retrieval.ingestion --product bonds
     python -m app.retrieval.ingestion --dry-run    # load + chunk, no embedding calls
 
+Every run appends to ``settings.LOG_FILE`` as well as the console (``--no-log-file`` opts
+out), because the warnings that matter here are the quiet ones — a doc skipped for a
+missing header, a product with no files — and an unattended or scrolled-past run would
+otherwise lose them. See ``configure_logging``.
+
 Re-run whenever product documentation changes **or** whenever ``EMBEDDING_MODEL``,
 ``CHUNK_SIZE``, or ``CHUNK_OVERLAP`` changes in ``settings.py`` — the store is built from
 those settings, and changing them without re-ingesting leaves the store and the config
@@ -39,6 +44,7 @@ import logging
 import re
 import sys
 from datetime import UTC, datetime
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 from langchain_community.document_loaders import Docx2txtLoader, PyPDFLoader, TextLoader
@@ -72,6 +78,11 @@ LOCK_FILE_PREFIX = "~$"
 
 _LAST_UPDATED_RE = re.compile(r"Last updated:\**\s*([A-Za-z]+\s+\d{4})")
 UNKNOWN_VERSION = "unknown"
+
+# Log rotation. A few full runs at DEBUG fit comfortably in 1 MB, so the retained set
+# covers recent history without ever needing to be pruned by hand.
+LOG_MAX_BYTES = 1_000_000
+LOG_BACKUP_COUNT = 3
 
 
 class IngestionError(RuntimeError):
@@ -328,6 +339,60 @@ def ingest_all(
     return written
 
 
+# -- logging ---------------------------------------------------------------
+
+
+def configure_logging(*, verbose: bool = False, log_to_file: bool = True) -> None:
+    """Send this job's logs to the console and (by default) to ``settings.LOG_FILE``.
+
+    Public rather than inlined into ``main`` so a notebook calling ``ingest_all``
+    directly gets the same output — importing this module configures nothing, and without
+    a handler the ``no 'Last updated:' header`` and ``no documents found`` warnings are
+    swallowed silently.
+
+    The file handler rotates at ``LOG_MAX_BYTES`` and keeps ``LOG_BACKUP_COUNT`` old
+    files, so an unattended job cannot grow the log without bound. It records timestamps
+    and logger names that the console format omits: a log read after the fact needs to say
+    *when*, and a run re-read weeks later needs to say which module spoke.
+
+    A file that cannot be opened (read-only volume, missing permissions) degrades to
+    console-only with a warning — an unwritable log is not a reason to fail an
+    otherwise-working ingestion.
+    """
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG if verbose else settings.LOG_LEVEL)
+
+    # Idempotent: re-running a notebook cell must not attach a second handler and print
+    # every line twice.
+    for handler in list(root.handlers):
+        root.removeHandler(handler)
+        handler.close()
+
+    console = logging.StreamHandler()
+    console.setFormatter(logging.Formatter("%(levelname)-8s %(message)s"))
+    root.addHandler(console)
+
+    if not log_to_file:
+        return
+
+    try:
+        settings.LOG_DIR.mkdir(parents=True, exist_ok=True)
+        file_handler = RotatingFileHandler(
+            settings.LOG_FILE,
+            maxBytes=LOG_MAX_BYTES,
+            backupCount=LOG_BACKUP_COUNT,
+            encoding="utf-8",
+        )
+    except OSError as exc:
+        log.warning("Could not open log file %s (%s) — console only", settings.LOG_FILE, exc)
+        return
+
+    file_handler.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)-8s %(name)s: %(message)s")
+    )
+    root.addHandler(file_handler)
+
+
 # -- CLI -------------------------------------------------------------------
 
 
@@ -349,12 +414,14 @@ def main(argv: list[str] | None = None) -> int:
         help="Load and chunk, but make no embedding calls and write nothing.",
     )
     parser.add_argument("--verbose", "-v", action="store_true", help="Debug-level logging.")
+    parser.add_argument(
+        "--no-log-file",
+        action="store_true",
+        help=f"Log to the console only, leaving {settings.LOG_FILE.name} untouched.",
+    )
     args = parser.parse_args(argv)
 
-    logging.basicConfig(
-        level=logging.DEBUG if args.verbose else settings.LOG_LEVEL,
-        format="%(levelname)-8s %(message)s",
-    )
+    configure_logging(verbose=args.verbose, log_to_file=not args.no_log_file)
 
     try:
         ingest_all(product_ids=args.products, dry_run=args.dry_run)
